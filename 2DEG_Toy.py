@@ -219,14 +219,15 @@ for i in range(1, grid_points_side - 1):
                 poisson_rows.append(k)
                 poisson_cols.append(indexing(ii, j))
                 poisson_values.append(-1.0)
+        
 
-            #append the point itself in k refers to (x,y) of the point    
-            poisson_rows.append(k)
+            #append the point itself in k refers to (x,y) of the point
+        poisson_rows.append(k)
                 
-            poisson_cols.append(k)
+        poisson_cols.append(k)
 
             #diagonal and not me in case its wall    
-            poisson_values.append(diagonal)
+        poisson_values.append(diagonal)
 
 matrix_rows = poisson_rows
 matrix_cols = poisson_cols
