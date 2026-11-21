@@ -103,10 +103,9 @@ python 2DEG_Toy.py
 
 ## Known issues
 
-- **Poisson matrix diagonal is doubled.** In the matrix-building loop, the lines that add the diagonal entry sit inside the `for ii` (up/down neighbour) loop, so the diagonal is added twice and SciPy sums the duplicates. Interior points get 8 instead of 4, and points next to a wall get 6 or 7 instead of 3. The solved potential, and therefore the field, is wrong. Fix: move the three `append` lines for the diagonal out of the `for ii` loop (one indentation level left).
 - **No measured output.** The script only produces a picture. Current, drift velocity and mobility are not computed, so the results are not yet checked against the input mobility.
 - **Unused values.** `electric_field`, `push_from_voltage`, `reduced_planck_constant` and the initial linear `potential` are set but have no effect (the potential is overwritten by the first Poisson solve at step 0). `electrons_out_right` is counted but never reported.
-- **Initial velocities are not Maxwellian:** all electrons start with the same speed v_th.
+
 
 ## Parameters
 
