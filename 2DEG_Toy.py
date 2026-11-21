@@ -359,7 +359,7 @@ for step in range(number_of_steps):
 
 
 
-
+    left_injection_fraction = 0.5
    
     
     # True = enters from left, False = enters from right, electron injection either side
