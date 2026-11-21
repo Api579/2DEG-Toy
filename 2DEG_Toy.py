@@ -37,9 +37,13 @@ applied_voltage = 10e-3
 #Initialisation of Grid and Grid points
 #+++++++++++++++++++++++++++++++++++++++++++
 
-grid_points_side = 10
+# grid too close repel, electrons "smooths out" ~8 nm, too close repel
+# at least 2 grid points across it [2]
+# 3 nm spacing gives ~2.6;
+# 31 points makes 30 gaps, so 31 points keeps the device 90 nm long
+grid_points_side = 31
 
-grid_spacing = 10e-9
+grid_spacing = 3e-9
 
 
 x_positions = numpy.arange(grid_points_side) * grid_spacing
