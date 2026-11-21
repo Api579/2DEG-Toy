@@ -98,15 +98,13 @@ temperature = 300.0
 # thermal_speed sqrt(kT/m), using boltzman distribution for more realism
 thermal_speed = numpy.sqrt(boltzmann_constant * temperature / effective_mass)
 
-# fermi velocity
-electron_speed = thermal_speed
 
-# Randomise direction for each electron, -num.py/2.0 is -90 degrees
-rand_angles = random_number.uniform(-numpy.pi / 2.0, numpy.pi / 2.0, number_of_electrons)
+#fermi velocity maxwell boltzman dist
+random_values = random_number.uniform(0.0, 1.0, number_of_electrons)
 
-# electron velocities x & y direction
-electron_x_v = electron_speed * numpy.cos(rand_angles)
-electron_y_v = electron_speed * numpy.sin(rand_angles)
+electron_x_v = thermal_speed * numpy.sqrt(-2.0 * numpy.log(1.0 - random_values))
+
+electron_y_v = thermal_speed * random_number.normal(0.0, 1.0, number_of_electrons)
 
 #+++++++++++++++++++++++++++++++++++++++++++
 # Poisson solver
