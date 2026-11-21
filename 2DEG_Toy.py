@@ -167,12 +167,12 @@ steps_between_poisson_solves = 5
 # build Poisson matrix
 
 # Field crosses left and right edges, but removed cus potential fixed (Dirichlet)
-poisson_array_unknown_sizing = (grid_points_side - 2) * (grid_points_side - 2)
+poisson_array_unknown_sizing = grid_points_side * (grid_points_side - 2)
 
 
 # indexing the points of array, indexes of points to solve for poisson
 def indexing(i,j):
-    return (i - 1) * (grid_points_side - 2) + (j - 1)
+    return i * (grid_points_side - 2) + (j - 1)
 
 
 
@@ -184,67 +184,6 @@ poisson_values = [] #coefficient
 boundary_rhs = numpy.zeros(poisson_array_unknown_sizing)
 
 
-####
-
-#in range where e field matters
-for i in range(1, grid_points_side - 1):
-    for j in range(1, grid_points_side - 1):
-        
-        k = indexing(i, j)
-
-        # 4 nearest points from finite-difference Poisson equation
-        diagonal = 4.0
-        
-        # left and right neighbours
-        for jj in (j - 1, j + 1):
-
-            #add voltage from left and right
-            if jj == 0:
-                boundary_rhs[k] += 0.0
-                
-            elif jj == grid_points_side - 1:
-                boundary_rhs[k] += applied_voltage
-                
-            # neighbour grid points is inside the grid so unknown now, need calculate
-            # so remember in the matrix it details to solve in loop
-
-                    
-            #finite-difference Poisson eqn at each point: 4 x (referenced point) - left - right - up - down = spacing^2 x charge / permittivity
-            # every neighbour has a minus sign in front, coefficient "-1"
-            # (with no charge, a point sits at the average of its 4 neighbours)
-            # where k is referenced point
-            
-            else:
-
-                # add the "referenced point" neighbour y in, same y cus same row, so only x need varies
-                poisson_rows.append(k)
-
-                # identity of the neighbour point
-                poisson_cols.append(indexing(i, jj))
-
-                # every neighbour has a minus sign in front, coefficient "-1", adds coefficient of that singular neighbour e
-                poisson_values.append(-1.0)
-
-                
-        # up and down neighbours
-        for ii in (i - 1, i + 1):
-            
-            if ii == 0 or ii == grid_points_side - 1:
-                # wall rows, so removes one from the diagonal, no e field
-                diagonal -= 1.0
-            else:
-                poisson_rows.append(k)
-                poisson_cols.append(indexing(ii, j))
-                poisson_values.append(-1.0)
-        
-
-            #append the point itself in k refers to (x,y) of the point
-        poisson_rows.append(k)
-                
-        poisson_cols.append(k)
-
-            #diagonal and not me in case its wall    
-        poisson_values.append(diagonal)
 
 
 
@@ -309,6 +248,14 @@ pyplot.scatter(x_grid/1e-9, y_grid/1e-9, color="lightgrey", label="grid points")
 
 pyplot.scatter(electron_x_positions/1e-9, electron_y_positions/1e-9, color="blue", s=10, label="electrons")
 
+# only draw 200, not full electrons
+plot_count = 200
+pyplot.scatter(electron_x_positions[:plot_count]/1e-9, electron_y_positions[:plot_count]/1e-9, color="blue", s=10, label="electrons")
+
+
+drift_velocity_sum = 0.0
+samples = 0
+
 # stores electron path to output once at end as saved png, speed-up
 path_x = []
 path_y = []
@@ -352,13 +299,13 @@ for step in range(number_of_steps):
         electron_count = numpy.zeros((grid_points_side, grid_points_side))
 
         # update electron_count 2D array with electrons nearest to each grid point on (x,y), add 1
-         numpy.add.at(electron_count, (nearest_row_y_point, nearest_column_x_point), 1)
+        numpy.add.at(electron_count, (nearest_row_y_point, nearest_column_x_point), 1)
 
         # add based on corner "percentage"
-         numpy.add.at(electron_count, (grid_square_y, grid_square_x), q00)
-         numpy.add.at(electron_count, (grid_square_y, grid_square_x + 1), q10)
-         numpy.add.at(electron_count, (grid_square_y + 1, grid_square_x), q01)
-         numpy.add.at(electron_count, (grid_square_y + 1, grid_square_x + 1), q11)
+        numpy.add.at(electron_count, (grid_square_y, grid_square_x), q00)
+        numpy.add.at(electron_count, (grid_square_y, grid_square_x + 1), q10)
+        numpy.add.at(electron_count, (grid_square_y + 1, grid_square_x), q01)
+        numpy.add.at(electron_count, (grid_square_y + 1, grid_square_x + 1), q11)
       
         # find real electrons per square metre at each grid point, using weight found before
         electron_sheet_density = electron_count * electron_weight / grid_point_area
