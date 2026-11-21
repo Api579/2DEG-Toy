@@ -48,21 +48,21 @@ python 2DEG_Toy.py
 | Drude model (relaxation time) | τ = μ m\* / e | Mean time between collisions, from the mobility |
 | Scattering as a Poisson process | P = 1 − exp(−Δt / τ) | Chance an electron scatters in one time step |
 | Thermal speed | v_th = √(k_B T / m\*) | Spread of the electron velocities |
-| Maxwell–Boltzmann distribution | v_x, v_y ~ Gaussian(0, v_th) | Velocities after scattering, and v_y of entering electrons |
-| Flux-weighted Maxwellian (Rayleigh) | v_in = v_th √(−2 ln(1 − u)) | Speed (v_x) of electrons entering through a contact |
+| Maxwell–Boltzmann distribution | v_x, v_y ~ Gaussian(0, v_th) | Velocities after scattering, and initial/entering v_y |
+| Flux-weighted Maxwellian (Rayleigh) | v_in = v_th √(−2 ln(1 − u)) | Initial v_x of all electrons, and v_x of electrons entering through a contact |
 | Macro-particle weight | w = n₀ L² / N | Real electrons represented by each simulated electron |
 
 ## Numerical methods and techniques
 
 **Particle simulation**
 - **Monte Carlo particle simulation** (an ensemble Monte Carlo / particle-in-cell approach): electrons are individual particles; scattering, injection position and velocities are random.
-- **Initial state:** all 100 electrons start at x = 0 with a random y. Each has the same speed v_th, pointing in a random direction between −90° and +90° (into the device).
+- **Initial state:** all 100 electrons start at x = 0 with a random y, with velocities drawn from the same distribution as electrons entering through a contact (Rayleigh-distributed v_x into the device, Gaussian v_y).
 - **Time stepping:** semi-implicit (symplectic) Euler. Velocity is updated first, then position, with a fixed time step.
 - **Charge assignment:** nearest-grid-point. Each electron's charge goes to its closest grid point, and the field is read from that same point. Grid points on the edges represent half a cell of area (corners a quarter).
-- **Random sampling:** uniform and Gaussian random numbers (NumPy `default_rng`), with **inverse transform sampling** for the Rayleigh entry speed.
+- **Random sampling:** uniform and Gaussian random numbers (NumPy `default_rng`), with **inverse transform sampling** for the Rayleigh v_x.
 
 **Electrostatics (Poisson solver)**
-- **Finite-difference method** intended to use the **five-point stencil**: 4φ(i,j) − φ_left − φ_right − φ_up − φ_down = h²ρ/ε. (The matrix that is actually built has doubled diagonal entries – see [Known issues](#known-issues).)
+- **Finite-difference method** with the **five-point stencil**: 4φ(i,j) − φ_left − φ_right − φ_up − φ_down = h²ρ/ε.
 - **Unknowns:** only the interior 8 × 8 grid points are solved for; the edge rows and columns are filled in afterwards from the boundary conditions.
 - **Boundary conditions:**
   - **Dirichlet** on the left/right contacts: φ = 0 (source) and φ = V (drain), added to the right-hand side.
@@ -105,7 +105,6 @@ python 2DEG_Toy.py
 
 - **No measured output.** The script only produces a picture. Current, drift velocity and mobility are not computed, so the results are not yet checked against the input mobility.
 - **Unused values.** `electric_field`, `push_from_voltage`, `reduced_planck_constant` and the initial linear `potential` are set but have no effect (the potential is overwritten by the first Poisson solve at step 0). `electrons_out_right` is counted but never reported.
-
 
 ## Parameters
 
