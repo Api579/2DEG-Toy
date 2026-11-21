@@ -1,9 +1,10 @@
 import numpy
-import mtplotlib
+import matplotlib
 matplotlib.use("Agg") #remove window disp, saves only final png, for speed-up
 import matplotlib.pyplot as pyplot
 
-
+import scipy.sparse
+import scipy.sparse.linalg
 
 #+++++++++++++++++++++++++++++++++++++++++++
 #GaAs parameters and physical constants
@@ -28,8 +29,8 @@ electron_mobility = 0.8
 # num of electrons per square metre of the 2DEG typically
 electron_density = 3e15
 # The voltage applied on top of left edge and right edge of AlGaAs/GaAs sandwhich
-# realistic value for experiments
-applied_voltage = 1e-3
+# value small enough to not be lost as noise (if too small, it does not contribute much to thermal speed)
+applied_voltage = 10e-3
 
 
 #+++++++++++++++++++++++++++++++++++++++++++
@@ -140,11 +141,93 @@ steps_between_poisson_solves = 10
 
 
 
+# build Poisson matrix
+
+#keep dimensions to be within grid sizing
+# outermost of array no field crosses,so remove left, right,top, bottom edges
+poisson_array_unknown_sizing = (grid_points_side - 2) * (grid_points_side - 2)
+
+
+# indexing the points of array, indexes of points to solve for poisson
+def indexing(i,j):
+    return (i - 1) * (grid_points_side - 2) + (j - 1)
 
 
 
+poisson_rows = [] #eqn
+poisson_cols = [] #coordinate
+poisson_values = [] #coefficient
 
+# boundary contribution to the right-hand side (from left: 0, right:10mV voltages)
+boundary_rhs = numpy.zeros(poisson_array_unknown_sizing)
 
+#in range where e field matters
+for i in range(1, grid_points_side - 1):
+    for j in range(1, grid_points_side - 1):
+        
+        k = indexing(i, j)
+
+        # 4 nearest points from finite-difference Poisson equation
+        diagonal = 4.0
+        
+        # left and right neighbours
+        for jj in (j - 1, j + 1):
+
+            #add voltage from left and right
+            if jj == 0:
+                boundary_rhs[k] += 0.0
+                
+            elif jj == grid_points_side - 1:
+                boundary_rhs[k] += applied_voltage
+                
+            # neighbour electrons of points is inside the grid so unknown now, need calculate
+            # so remember in the matrix it details to solve in loop
+
+                    
+            #finite-difference Poisson eqn at each point: 4 x (referenced point) - left - right - up - down = spacing^2 x charge / permittivity
+            # every neighbour has a minus sign in front, coefficient "-1"
+            # (with no charge, a point sits at the average of its 4 neighbours)
+            # where k is referenced point
+            
+            else:
+
+                # add the "referenced point" neighbour x in, same x cus same row, so only y need varies
+                poisson_rows.append(k)
+
+                # identity of the neighbour point
+                poisson_cols.append(indexing(i, jj))
+
+                # every neighbour has a minus sign in front, coefficient "-1", adds coefficient of that singular neighbour e
+                poisson_values.append(-1.0)
+
+                
+        # up and down neighbours
+        for ii in (i - 1, i + 1):
+            
+            if ii == 0 or ii == grid_points_side - 1:
+                # wall rows, so removes one from the diagonal, no e field
+                diagonal -= 1.0
+            else:
+                poisson_rows.append(k)
+                poisson_cols.append(indexing(ii, j))
+                poisson_values.append(-1.0)
+
+            #append the point itself in k refers to (x,y) of the point    
+            poisson_rows.append(k)
+                
+            poisson_cols.append(k)
+
+            #diagonal and not me in case its wall    
+            poisson_values.append(diagonal)
+
+matrix_rows = poisson_rows
+matrix_cols = poisson_cols
+matrix_values = poisson_values
+
+#builds matrix with the recorded values
+poisson_matrix = scipy.sparse.csc_matrix((matrix_values, (matrix_rows, matrix_cols)),shape=(poisson_array_unknown_sizing, poisson_array_unknown_sizing))
+#solves for voltage at every point inside grid
+poisson_solver = scipy.sparse.linalg.splu(poisson_matrix)
 
 
 #+++++++++++++++++++++++++++++++++++++++++++
@@ -157,12 +240,14 @@ pyplot.scatter(x_grid/1e-9, y_grid/1e-9, color="lightgrey", label="grid points")
 
 pyplot.scatter(electron_x_positions/1e-9, electron_y_positions/1e-9, color="blue", s=10, label="electrons")
 
-
+# stores electron path to output once at end as saved png, speed-up
+path_x = []
+path_y = []
 
 
 
 #+++++++++++++++++++++++++++++++++++++++++++
-#Main loop 
+#Main loop Monte Carlo
 #+++++++++++++++++++++++++++++++++++++++++++
 
 for step in range(number_of_steps):
@@ -194,22 +279,28 @@ for step in range(number_of_steps):
         # charge per volume, for Poisson's equation
         volume_charge = sheet_charge / two_deg_thickness
 
+        # matrix_built with coefficients * voltage inside solved for = right hand side
+        # solve Poisson's equation directly (4 phi - neighbours = spacing^2 x charge / permittivity)
 
-
+        # volume charge does not consider walls and flatten from 2D to 1D, to get RHS voltage, voltage from e and voltage from contacts
+        right_hand_side = boundary_rhs + (grid_spacing * grid_spacing / gaas_permittivity) * volume_charge[1:-1, 1:-1].ravel()
+        
+        # solve for volage and put back into the grid for other calculation
+        potential[1:-1, 1:-1] = poisson_solver.solve(right_hand_side).reshape((grid_points_side - 2), (grid_points_side - 2))
 
 
           
-            # left edge (source) at 0 V
-            potential[:, 0] = 0.0
+        # left edge (source) at 0 V
+        potential[:, 0] = 0.0
           
-            # right edge (drain) fixed applied voltage; electrons pulled to higher potential, so left to right
-            potential[:, -1] = applied_voltage
+        # right edge (drain) fixed applied voltage; electrons pulled to higher potential, so left to right
+        potential[:, -1] = applied_voltage
           
-            # Added bottom wall, no field crosses it, so bottom row = row immediately just inside
-            potential[0, 1:-1] = potential[1, 1:-1]
+        # Added bottom wall, no field crosses it, so bottom row = row immediately just inside
+        potential[0, 1:-1] = potential[1, 1:-1]
           
-            # Added top wall, no e-field crossing out, top row efield =  efleid row ,just next to it, inside
-            potential[-1, 1:-1] = potential[-2, 1:-1]
+        # Added top wall, no e-field crossing out, top row efield =  efleid row ,just next to it, inside
+        potential[-1, 1:-1] = potential[-2, 1:-1]
 
         
         # calculate electric field–potential relationship
@@ -285,10 +376,12 @@ for step in range(number_of_steps):
 #+++++++++++++++++++++++++++++++++++++++++++
 #Plotting final
 #+++++++++++++++++++++++++++++++++++++++++++
+    if step % 50 == 0:
+        path_x.append(electron_x_positions.copy())
+        path_y.append(electron_y_positions.copy())
 
-# draw electron trail
-
-
+# draw electron path once
+pyplot.scatter(numpy.concatenate(path_x) / 1e-9, numpy.concatenate(path_y) / 1e-9, color="blue", s=2, alpha=0.3)
 
 # final positions of the electrons in red
 pyplot.scatter(electron_x_positions /1e-9, electron_y_positions /1e-9, color="red", s=10, label="end")
@@ -303,4 +396,5 @@ pyplot.ylabel("y (nm)")
 
 # Save the plot as an image file, trimmed empty space
 pyplot.savefig("electron.png", bbox_inches="tight")
+
 
