@@ -375,11 +375,11 @@ for step in range(number_of_steps):
     scattered = random_numbers < scattering_probability
     
    
-    scattered_angles = random_number.uniform(0.0, 2.0 * numpy.pi, number_of_electrons)
-  
-    #speed unchanged only direction changes
-    electron_x_v = numpy.where(scattered, electron_speed * numpy.cos(scattered_angles), electron_x_v)
-    electron_y_v = numpy.where(scattered, electron_speed * numpy.sin(scattered_angles), electron_y_v)
+    # phonon scattering, new rand velocity using maxwell-boltzman distributio 
+    # speed, direction reset,
+    # selectrons heated by the field relax to lattice temperature, relaxation
+    electron_x_v = numpy.where(scattered, thermal_speed * random_number.normal(0.0, 1.0, number_of_electrons), electron_x_v)
+    electron_y_v = numpy.where(scattered, thermal_speed * random_number.normal(0.0, 1.0, number_of_electrons), electron_y_v)
 
 #+++++++++++++++++++++++++++++++++++++++++++
 #Plotting final
