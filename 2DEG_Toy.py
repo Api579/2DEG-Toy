@@ -162,7 +162,7 @@ pyplot.scatter(electron_x_positions/1e-9, electron_y_positions/1e-9, color="blue
 
 
 #+++++++++++++++++++++++++++++++++++++++++++
-#Main loop Monte Carlo
+#Main loop 
 #+++++++++++++++++++++++++++++++++++++++++++
 
 for step in range(number_of_steps):
