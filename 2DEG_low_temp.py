@@ -198,26 +198,26 @@ for step in range(number_of_steps):
             # right edge (drain) fixed applied voltage; electrons pulled to higher potential, so left to right
             potential[:, -1] = applied_voltage
           
-            # Added bottom wall, no field crosses it, so bottom row = row just inside
+            # Added bottom wall, no field crosses it, so bottom row = row immediately just inside
             potential[0, 1:-1] = potential[1, 1:-1]
           
-            # Added top wall, no e-field crossing out, top row efield =  efleid row just inside
+            # Added top wall, no e-field crossing out, top row efield =  efleid row ,just next to it, inside
             potential[-1, 1:-1] = potential[-2, 1:-1]
 
-        # ADDED: ---------- Step 3: electric field from the potential, E = -slope of potential ----------
-        # ADDED: numpy.gradient gives the slope along rows (y) first, then along columns (x)
+        
+        # calculate electric field–potential relationship
         potential_slope_y, potential_slope_x = numpy.gradient(potential, grid_spacing)
         grid_field_x = -potential_slope_x
         grid_field_y = -potential_slope_y
 
-    # ADDED: ---------- Step 4: push each electron with the field at its grid point ----------
+    # push by field, update v and p of electron
   
-    # ADDED: field felt by each electron
-    electron_field_x = grid_field_x[nearest_row, nearest_column]
-    electron_field_y = grid_field_y[nearest_row, nearest_column]
-    # ADDED: a = -eE/m*, minus sign because the electron's charge is negative
+    # field felt by each electron
+    electron_field_x = grid_field_x[nearest_row_y_point, nearest_column_x_point]
+    electron_field_y = grid_field_y[nearest_row_y_point, nearest_column_x_point]
+  
+    # a = -eE/m*, F=ma, F= -qV
     electron_x_v = electron_x_v - electron_charge * electron_field_x / effective_mass * time_step
-    # ADDED: the field now also has a y part, so electrons get pushed up/down too
     electron_y_v = electron_y_v - electron_charge * electron_field_y / effective_mass * time_step
 
 
