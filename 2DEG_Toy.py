@@ -57,7 +57,9 @@ x_grid, y_grid = numpy.meshgrid(x_positions, y_positions)
 #Electron Initialisation
 #+++++++++++++++++++++++++++++++++++++++++++
 
-number_of_electrons = 100
+# more electrons so each carries less charge, and random jitter is smaller
+# published runs use tens of thousands [1], [2]
+number_of_electrons = 20000
 left_edge = x_positions[0]
 right_edge = x_positions[-1]
 bottom_edge = y_positions[0]
@@ -67,13 +69,20 @@ grid_length = right_edge-left_edge
 
 random_number = numpy.random.default_rng()
 
-electron_x_positions = numpy.full(number_of_electrons, left_edge)
+# start electrons spread randomly [1] if all at x = 0, first Poisson solve see no electrons affect calculations.
+electron_x_positions = random_number.uniform(left_edge, right_edge, number_of_electrons)
+
 electron_y_positions = random_number.uniform(bottom_edge, top_edge, number_of_electrons)
 
 # femto second scale, average scattering is 0.3 pico so need smaller to "see" whats happening
 # but not too small                              
 time_step = 1e-15
-number_of_steps = 2000
+
+
+# let simulation settle, then average over the long settled stretch [1]
+# first 3 ps thrown away; needs > 5 collisions ~1.5 ps to settle, 
+number_of_steps = 15000
+settling_steps = 3000
 
 #init electron count leaving grid on right side
 electrons_out_right = 0
@@ -106,7 +115,9 @@ thermal_speed = numpy.sqrt(boltzmann_constant * temperature / effective_mass)
 #flux-weighted Maxwellian (Rayleigh)
 random_values = random_number.uniform(0.0, 1.0, number_of_electrons)
 
-electron_x_v = thermal_speed * numpy.sqrt(-2.0 * numpy.log(1.0 - random_values))
+# electrons already in device: random directions, Gaussian for velocity [1], [3]
+# Rayleigh is only for electrons entering through a contact [3] only for injection, faster ones cross into device more often
+electron_x_v = thermal_speed * random_number.normal(0.0, 1.0, number_of_electrons)
 
 electron_y_v = thermal_speed * random_number.normal(0.0, 1.0, number_of_electrons)
 
@@ -145,9 +156,11 @@ potential = (numpy.copy(x_grid) / grid_length )* applied_voltage
 grid_field_x = numpy.zeros((grid_points_side, grid_points_side))
 grid_field_y = numpy.zeros((grid_points_side, grid_points_side))
 
-# solve Poisson per these many steps, charge small change in 10 femto second
-steps_between_poisson_solves = 10
 
+# electrons move back-forth fast (190 fs/cycle, plasma freq ~3.3e13 rad/s)
+# update the voltage often enough to track this movement [2]
+# plasma frequency*interval < 0.2; every 5 fs gives ~0.17 [2]
+steps_between_poisson_solves = 5
 
 
 
@@ -169,6 +182,9 @@ poisson_values = [] #coefficient
 
 # boundary contribution to the right-hand side (from left: 0, right:10mV voltages)
 boundary_rhs = numpy.zeros(poisson_array_unknown_sizing)
+
+
+####
 
 #in range where e field matters
 for i in range(1, grid_points_side - 1):
@@ -230,6 +246,49 @@ for i in range(1, grid_points_side - 1):
             #diagonal and not me in case its wall    
         poisson_values.append(diagonal)
 
+
+
+
+
+# finite-difference Poisson for each point: 4 x (point) - left - right - up - down = spacing^2 x charge / permittivity
+for i in range(grid_points_side):
+    for j in range(1, grid_points_side - 1):
+      
+        k = indexing(i, j)
+      
+        # left and right neighbours
+        # if it's a contact, known voltage goes to the right-hand side
+        for jj in (j - 1, j + 1):
+            if jj == 0:
+                boundary_rhs[k] += 0.0
+            elif jj == grid_points_side - 1:
+                boundary_rhs[k] += applied_voltage
+            else:
+                poisson_rows.append(k)
+                poisson_cols.append(indexing(i, jj))
+                poisson_values.append(-1.0)
+              
+        # up and down neighbours;
+        # if pass wall, use the mirror-image point instead
+        # mirror, assumes voltage flat across the wall and no field through it
+        # the mirror point is added twice, the matrix adds them up to -2
+        # since mirrored now 2 above, in upper row 
+      
+        for ii in (i - 1, i + 1):
+            if ii < 0:
+                ii = 1
+            elif ii > grid_points_side - 1:
+                ii = grid_points_side - 2
+              
+            poisson_rows.append(k)
+            poisson_cols.append(indexing(ii, j))
+            poisson_values.append(-1.0)
+    
+        poisson_rows.append(k)
+        poisson_cols.append(k)
+        poisson_values.append(4.0)
+
+####
 matrix_rows = poisson_rows
 matrix_cols = poisson_cols
 matrix_values = poisson_values
@@ -263,12 +322,28 @@ path_y = []
 for step in range(number_of_steps):
 
 
-    # clip boundaries, round the num of distance from left edge, finds nearest grid point in column
-    # relative pos then grid index kept within boundary of grid
-    
-    nearest_column_x_point = numpy.clip(numpy.round((electron_x_positions - left_edge) / grid_spacing).astype(int), 0, grid_points_side - 1)
+
+
+    # share individual electron's charge between 4 corners of grid-square [2]
+    # closer corner has bigger share, this is smoother than all-to-nearest-point
+    # position measured in grid-squares
   
-    nearest_row_y_point = numpy.clip(numpy.round((electron_y_positions - bottom_edge) / grid_spacing).astype(int), 0, grid_points_side - 1)
+    grid_x = (electron_x_positions - left_edge) / grid_spacing
+    grid_y = (electron_y_positions - bottom_edge) / grid_spacing
+  
+    # electron coordinates in grid square, ans kept within the device, 2D-mesh grid
+    grid_square_x = numpy.clip(numpy.floor(grid_x).astype(int), 0, grid_points_side - 2)
+    grid_square_y = numpy.clip(numpy.floor(grid_y).astype(int), 0, grid_points_side - 2)
+  
+    # length across square for electron
+    fractions_x = grid_x - grid_square_x
+    fractions_y = grid_y - grid_square_y
+  
+    # share of each corner where 1 is 100%, 0.7 70% so on
+    q00 = (1 - fractions_x) * (1 - fractions_y)
+    q10 = fractions_x * (1 - fractions_y)
+    q01 = (1 - fractions_x) * fractions_y
+    q11 = fractions_x * fractions_y
 
     #  charge only calculates on steps where Poisson solved
     if step % steps_between_poisson_solves == 0:
@@ -277,8 +352,13 @@ for step in range(number_of_steps):
         electron_count = numpy.zeros((grid_points_side, grid_points_side))
 
         # update electron_count 2D array with electrons nearest to each grid point on (x,y), add 1
-        numpy.add.at(electron_count, (nearest_row_y_point, nearest_column_x_point), 1)
+         numpy.add.at(electron_count, (nearest_row_y_point, nearest_column_x_point), 1)
 
+        # add based on corner "percentage"
+         numpy.add.at(electron_count, (grid_square_y, grid_square_x), q00)
+         numpy.add.at(electron_count, (grid_square_y, grid_square_x + 1), q10)
+         numpy.add.at(electron_count, (grid_square_y + 1, grid_square_x), q01)
+         numpy.add.at(electron_count, (grid_square_y + 1, grid_square_x + 1), q11)
       
         # find real electrons per square metre at each grid point, using weight found before
         electron_sheet_density = electron_count * electron_weight / grid_point_area
@@ -293,10 +373,10 @@ for step in range(number_of_steps):
         # solve Poisson's equation directly (4 phi - neighbours = spacing^2 x charge / permittivity)
 
         # volume charge does not consider walls and flatten from 2D to 1D, to get RHS voltage, voltage from e and voltage from contacts
-        right_hand_side = boundary_rhs + (grid_spacing * grid_spacing / gaas_permittivity) * volume_charge[1:-1, 1:-1].ravel()
+        right_hand_side = boundary_rhs + (grid_spacing * grid_spacing / gaas_permittivity) * volume_charge[:, 1:-1].ravel()
         
         # solve for volage and put back into the grid for other calculation
-        potential[1:-1, 1:-1] = poisson_solver.solve(right_hand_side).reshape((grid_points_side - 2), (grid_points_side - 2))
+        potential[:, 1:-1] = poisson_solver.solve(right_hand_side).reshape(grid_points_side, grid_points_side - 2)
 
 
           
@@ -306,23 +386,24 @@ for step in range(number_of_steps):
         # right edge (drain) fixed applied voltage; electrons pulled to higher potential, so left to right
         potential[:, -1] = applied_voltage
           
-        # Added bottom wall, no field crosses it, so bottom row = row immediately just inside
-        potential[0, 1:-1] = potential[1, 1:-1]
-          
-        # Added top wall, no e-field crossing out, top row efield =  efleid row ,just next to it, inside
-        potential[-1, 1:-1] = potential[-2, 1:-1]
+
 
         
         # calculate electric field–potential relationship
         potential_slope_y, potential_slope_x = numpy.gradient(potential, grid_spacing)
         grid_field_x = -potential_slope_x
         grid_field_y = -potential_slope_y
+      
+        grid_field_y[0, :] = 0.0
+        grid_field_y[-1, :] = 0.0
 
     # push by field, update v and p of electron
   
     # field felt by each electron
-    electron_field_x = grid_field_x[nearest_row_y_point, nearest_column_x_point]
-    electron_field_y = grid_field_y[nearest_row_y_point, nearest_column_x_point]
+    electron_field_x = (q00 * grid_field_x[grid_square_y, grid_square_x] + q10 * grid_field_x[grid_square_y, grid_square_x + 1]
+                        + q01 * grid_field_x[grid_square_y + 1, grid_square_x] + q11 * grid_field_x[grid_square_y + 1, grid_square_x + 1])
+    electron_field_y = (q00 * grid_field_y[grid_square_y, grid_square_x] + q10 * grid_field_y[grid_square_y, grid_square_x + 1] 
+                        + q01 * grid_field_y[grid_square_y + 1, grid_square_x] + q11 * grid_field_y[grid_square_y + 1, grid_square_x + 1])
   
     # a = -eE/m*, F=ma, F= -qE
     electron_x_v = electron_x_v - electron_charge * electron_field_x / effective_mass * time_step
@@ -406,15 +487,23 @@ for step in range(number_of_steps):
 #+++++++++++++++++++++++++++++++++++++++++++
 #Plotting final
 #+++++++++++++++++++++++++++++++++++++++++++
+
+    # save electrons' positions for the trail plot
     if step % 50 == 0:
-        path_x.append(electron_x_positions.copy())
-        path_y.append(electron_y_positions.copy())
+        path_x.append(electron_x_positions[:plot_count].copy())
+        path_y.append(electron_y_positions[:plot_count].copy())
+
+    # once settled, add (average * speed) each step [1]
+    if step >= settling_steps:
+        drift_velocity_sum += electron_x_v.mean()
+        samples += 1
+
 
 # draw electron path once
 pyplot.scatter(numpy.concatenate(path_x) / 1e-9, numpy.concatenate(path_y) / 1e-9, color="blue", s=2, alpha=0.3)
 
 # final positions of the electrons in red
-pyplot.scatter(electron_x_positions /1e-9, electron_y_positions /1e-9, color="red", s=10, label="end")
+pyplot.scatter(electron_x_positions[:plot_count] /1e-9, electron_y_positions[:plot_count] /1e-9, color="red", s=10, label="end")
 
 
 # Make one unit in x equal one unit in y
@@ -426,5 +515,9 @@ pyplot.ylabel("y (nm)")
 
 # Save the plot as an image file, trimmed empty space
 pyplot.savefig("electron.png", bbox_inches="tight")
+
+drift_velocity = drift_velocity_sum / samples
+print(f"drift velocity = {drift_velocity:.3g} m/s")
+print(f"apparent mobility = {drift_velocity / (applied_voltage / grid_length):.3g} m^2/Vs (input {electron_mobility})")
 
 
