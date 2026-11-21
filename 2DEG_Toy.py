@@ -246,7 +246,7 @@ poisson_solver = scipy.sparse.linalg.splu(poisson_matrix)
 # Draw a dot at each grid point
 pyplot.scatter(x_grid/1e-9, y_grid/1e-9, color="lightgrey", label="grid points")
 
-pyplot.scatter(electron_x_positions/1e-9, electron_y_positions/1e-9, color="blue", s=10, label="electrons")
+
 
 # only draw 200, not full electrons
 plot_count = 200
@@ -298,8 +298,6 @@ for step in range(number_of_steps):
         # init electron count array of zeros
         electron_count = numpy.zeros((grid_points_side, grid_points_side))
 
-        # update electron_count 2D array with electrons nearest to each grid point on (x,y), add 1
-        numpy.add.at(electron_count, (nearest_rows_y_point, nearest_columns_x_point), 1)
 
         # add based on corner "percentage"
         numpy.add.at(electron_count, (grid_square_y, grid_square_x), q00)
