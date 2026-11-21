@@ -99,7 +99,7 @@ temperature = 300.0
 thermal_speed = numpy.sqrt(boltzmann_constant * temperature / effective_mass)
 
 
-#fermi velocity maxwell boltzman dist
+#thermal velocity maxwell boltzman dist
 random_values = random_number.uniform(0.0, 1.0, number_of_electrons)
 
 electron_x_v = thermal_speed * numpy.sqrt(-2.0 * numpy.log(1.0 - random_values))
