@@ -185,18 +185,18 @@ Printing the time-averaged potential across the device, and the field in the mid
 
 ## References
 
-[1] T. L. Cocker, D. Baillie, M. Buruma, L. V. Titova, R. D. Sydora, F. Marsiglio, and F. A. Hegmann, "Microscopic origin of the Drude-Smith model," arXiv:1705.10350v2 [cond-mat], Oct. 2017.
+[1] T. L. Cocker, D. Baillie, M. Buruma, L. V. Titova, R. D. Sydora, F. Marsiglio, and F. A. Hegmann, "Microscopic origin of the Drude-Smith model," *Phys. Rev. B*, vol. 96, Art. no. 205439, 2017, doi: 10.1103/PhysRevB.96.205439. (Preprint: arXiv:1705.10350.)
 
-[2] M. M. Turner, A. Derzsi, Z. Donkó, D. Eremin, S. J. Kelly, T. Lafleur, and T. Mussenbrock, "Simulation benchmarks for low-pressure plasmas: Capacitive discharges," arXiv:1211.5246v2 [physics.plasm-ph], Nov. 2012.
+[2] M. M. Turner, A. Derzsi, Z. Donkó, D. Eremin, S. J. Kelly, T. Lafleur, and T. Mussenbrock, "Simulation benchmarks for low-pressure plasmas: Capacitive discharges," doi: 10.1063/1.4775084. (Preprint: arXiv:1211.5246.)
 
-[3] G. R. Werner, S. Robertson, T. G. Jenkins, A. M. Chap, and J. R. Cary, "Accelerated steady-state electrostatic particle-in-cell simulation of Langmuir probes," arXiv:2109.12765.
+[3] G. R. Werner, S. Robertson, T. G. Jenkins, A. M. Chap, and J. R. Cary, "Accelerated steady-state electrostatic particle-in-cell simulation of Langmuir probes," doi: 10.1063/5.0072994. (Preprint: arXiv:2109.12765.)
 
-[4] F. Chaves and D. Jiménez, "Electrostatics of two-dimensional lateral junctions," arXiv:1802.04635v1, Feb. 2018.
+[4] F. A. Chaves and D. Jiménez, "Electrostatics of two-dimensional lateral junctions," doi: 10.1088/1361-6528/aabeb2. (Preprint: arXiv:1802.04635.)
 
-[5] A. Y. Choi, P. S. Cheng, B. Hatanpää, and A. J. Minnich, "Electronic noise of warm electrons in semiconductors from first-principles," arXiv:2009.11395, Jan. 2021.
+[5] A. Y. Choi, P. Cheng, B. Hatanpää, and A. J. Minnich, "Electronic noise of warm electrons in semiconductors from first-principles," *Phys. Rev. Mater.*, vol. 5, Art. no. 044603, 2021, doi: 10.1103/PhysRevMaterials.5.044603. (Preprint: arXiv:2009.11395.)
 
-[6] Ioffe Physico-Technical Institute, "GaAs – Gallium Arsenide: Electrical properties," *NSM Archive – Physical Properties of Semiconductors*. [Online]. Available: https://www.ioffe.ru/SVA/NSM/Semicond/GaAs/electric.html
+[6] "GaAs - Gallium Arsenide: Electrical properties." [Online]. Available: https://www.ioffe.ru/SVA/NSM/Semicond/GaAs/electric.html
 
-[7] Z. Yarar, B. Özdemir, and M. Özdemir, "Electron transport and mobility calculation in a AlGaAs/GaAs 2DEG by Monte Carlo method," *Erciyes Üniv. Fen Bilim. Enst. Derg.*, vol. 21, no. 1–2, pp. 13–23, 2005.
+[7] Z. Yarar, B. Özdemir, and M. Özdemir, "Electron transport and mobility calculation in a AlGaAs/GaAs 2DEG by Monte Carlo method," *Erciyes Üniversitesi Fen Bilimleri Enstitüsü Dergisi*, vol. 21, no. 1–2, pp. 13–23, 2005.
 
-[8] S. Islam, M. Nedjalkov, and S. Ahmed, "On the self-consistent event biasing schemes for Monte Carlo simulations of nanoscale MOSFETs," arXiv:0910.4781.
+[8] S. Islam, M. Nedjalkov, and S. Ahmed, "On the self-consistent event biasing schemes for Monte Carlo simulations of nanoscale MOSFETs," arXiv:0910.4781, Oct. 2009.
