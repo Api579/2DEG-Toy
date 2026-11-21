@@ -299,7 +299,7 @@ for step in range(number_of_steps):
         electron_count = numpy.zeros((grid_points_side, grid_points_side))
 
         # update electron_count 2D array with electrons nearest to each grid point on (x,y), add 1
-        numpy.add.at(electron_count, (nearest_row_y_point, nearest_column_x_point), 1)
+        numpy.add.at(electron_count, (nearest_rows_y_point, nearest_columns_x_point), 1)
 
         # add based on corner "percentage"
         numpy.add.at(electron_count, (grid_square_y, grid_square_x), q00)
