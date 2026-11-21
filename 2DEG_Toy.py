@@ -255,7 +255,7 @@ path_y = []
 
 
 #+++++++++++++++++++++++++++++++++++++++++++
-#Main loop Monte Carlo
+#Main loop 
 #+++++++++++++++++++++++++++++++++++++++++++
 
 for step in range(number_of_steps):
@@ -357,18 +357,38 @@ for step in range(number_of_steps):
     # number of electrons to replace
     number_to_replace = numpy.sum(outside_grid)
 
-    # replacement electron enters from left, same as initialisation
-    electron_x_positions[outside_grid] = left_edge
+
+
+
+   
     
-    # random y-axis coordinate
+    # True = enters from left, False = enters from right, electron injection either side
+    enter_from_left = random_number.uniform(0.0, 1.0, number_to_replace) < left_injection_fraction
+
+    # left edge or right edge, injected
+    electron_x_positions[outside_grid] = numpy.where(enter_from_left, left_edge, right_edge)
+
+    # random y-axis coordinate assigned
     electron_y_positions[outside_grid] = random_number.uniform(bottom_edge, top_edge, number_to_replace)
-    
-    # random direction for replacement
-    replace_angles = random_number.uniform(-numpy.pi / 2.0, numpy.pi / 2.0, number_to_replace)
 
-    electron_x_v[outside_grid] = electron_speed * numpy.cos(replace_angles)
-    electron_y_v[outside_grid] = electron_speed * numpy.sin(replace_angles)
+    # random new speed, boltzman maxwell dist
+  
+    random_values = random_number.uniform(0.0, 1.0, number_to_replace)
+    new_speed = thermal_speed * numpy.sqrt(-2.0 * numpy.log(1.0 - random_values))
 
+    # left contact moves right, right contact moves left (sign: -ve)
+    electron_x_v[outside_grid] = numpy.where(enter_from_left, new_speed, -new_speed)
+
+    # sidewards speed, random using boltzman dist
+    electron_y_v[outside_grid] = thermal_speed * random_number.normal(0.0, 1.0, number_to_replace)
+
+
+
+
+
+
+
+  
     # pick a random numbers, for probability 
     random_numbers = random_number.uniform(0.0, 1.0, number_of_electrons)
     # check if its below the scattering probability
