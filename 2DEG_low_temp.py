@@ -98,9 +98,11 @@ electron_x_v = electron_speed * numpy.cos(rand_angles)
 electron_y_v = electron_speed * numpy.sin(rand_angles)
 
 #+++++++++++++++++++++++++++++++++++++++++++
-# Poisson solcer
+# Poisson solver
 #+++++++++++++++++++++++++++++++++++++++++++
 # solve for e field from electron postion
+# solve for potential
+# average with grid points, nearest neighbours
 
 #  (farads per metre)
 vacuum_permittivity = 8.8541878128e-12
@@ -115,24 +117,24 @@ real_electrons_in_grid = electron_density * grid_length * grid_length
 #  how many real electrons each simulated electron represent
 electron_weight = real_electrons_in_grid / number_of_electrons
 
-# ADDED: area each grid point looks after; edge points cover half a square, corners a quarter
+# area each grid point responsible for; edge points cover area of half a square
 edge_weight = numpy.ones(grid_points_side)
 edge_weight[0] = 0.5
 edge_weight[-1] = 0.5
 
-# ADDED: shape (rows = y, columns = x), same layout as x_grid and y_grid from meshgrid
+# shape (rows = y, columns = x), grid point area responsible, same as x_grid and y_grid from meshgrid
 grid_point_area = grid_spacing * grid_spacing * numpy.outer(edge_weight, edge_weight)
 
-# ADDED: electric potential at every grid point, (volts), starts as a straight ramp from 0 to applied_voltage
-potential = numpy.copy(x_grid) / grid_length * applied_voltage
+# electric potential at every grid point, (volts), from 0 to applied_voltage, (q/l) * V, uniform e-field in neg e-direction
+potential = (numpy.copy(x_grid) / grid_length )* applied_voltage
 
-# ADDED: field at every grid point, (volts per metre), filled in by the solver inside the loop
+# field at every grid point, (volts per metre), init, empty arrays
 grid_field_x = numpy.zeros((grid_points_side, grid_points_side))
 grid_field_y = numpy.zeros((grid_points_side, grid_points_side))
 
-# ADDED: solve Poisson every this many steps (charge changes little in 10 fs)
+# solve Poisson per these many steps, charge small change in 10 femto second
 steps_between_poisson_solves = 10
-# ADDED: number of Jacobi passes per solve; each pass nudges the potential closer to the answer
+# Jacobi passes per solve; each iteration closer to solved potential
 jacobi_iterations = 200
 
 #+++++++++++++++++++++++++++++++++++++++++++
@@ -154,38 +156,52 @@ pyplot.scatter(electron_x_positions/1e-9, electron_y_positions/1e-9, color="blue
 
 for step in range(number_of_steps):
 
-    # ADDED: ---------- Step 1: put the electrons' charge onto the grid ----------
-    # ADDED: nearest grid point column (x) for each electron, kept inside 0..9
-    nearest_column = numpy.clip(numpy.round((electron_x_positions - left_edge) / grid_spacing).astype(int), 0, grid_points_side - 1)
-    # ADDED: nearest grid point row (y) for each electron, kept inside 0..9
-    nearest_row = numpy.clip(numpy.round((electron_y_positions - bottom_edge) / grid_spacing).astype(int), 0, grid_points_side - 1)
 
-    # ADDED: the charge only needs working out on the steps where Poisson is solved
+    # clip boundaries, round the num of distance from left edge, finds nearest grid point in column
+    # relative pos then grid index kept within boundary of grid
+    
+    nearest_column_x_point = numpy.clip(numpy.round((electron_x_positions - left_edge) / grid_spacing).astype(int), 0, grid_points_side - 1)
+  
+    nearest_row_y_point = numpy.clip(numpy.round((electron_y_positions - bottom_edge) / grid_spacing).astype(int), 0, grid_points_side - 1)
+
+    #  charge only calculates on steps where Poisson solved
     if step % steps_between_poisson_solves == 0:
-        # ADDED: count how many simulated electrons sit at each grid point
+      
+        # init electron count array of zeros
         electron_count = numpy.zeros((grid_points_side, grid_points_side))
-        numpy.add.at(electron_count, (nearest_row, nearest_column), 1)
-        # ADDED: real electrons per square metre at each grid point
+
+        # update electron_count 2D array with electrons nearest to each grid point on (x,y), add 1
+        numpy.add.at(electron_count, (nearest_row_y_point, nearest_column_x_point), 1)
+
+      
+        # find real electrons per square metre at each grid point, using weight found before
         electron_sheet_density = electron_count * electron_weight / grid_point_area
-        # ADDED: net charge per area: positive silicon background (= average density) minus the electrons
+      
+        # net sheet charge density eqn (= electron charge *(e_density - e_sheet_density))
         sheet_charge = electron_charge * (electron_density - electron_sheet_density)
-        # ADDED: charge per volume, needed by Poisson's equation
+      
+        # charge per volume, for Poisson's equation
         volume_charge = sheet_charge / two_deg_thickness
 
-        # ADDED: ---------- Step 2: solve Poisson's equation (Jacobi iteration) ----------
+        # solve Poisson's equation using Jacobi iteration
         for iteration in range(jacobi_iterations):
-            # ADDED: each inside point = average of its 4 neighbours + charge term
-            # ADDED: phi = 1/4 (left + right + up + down + spacing^2 x charge / permittivity)
-            potential[1:-1, 1:-1] = 0.25 * (potential[1:-1, :-2] + potential[1:-1, 2:]
-                                            + potential[:-2, 1:-1] + potential[2:, 1:-1]
+          
+            # inside each point = average of 4 neighbours + charge term
+            # eqn used: phi = 1/4 (left + right + up + down + spacing^2 x charge / permittivity)
+            # finite difference approximation of Poisson's equation
+            potential[1:-1, 1:-1] = 0.25 * (potential[1:-1, :-2] + potential[1:-1, 2:] + potential[:-2, 1:-1] + potential[2:, 1:-1] 
                                             + grid_spacing * grid_spacing * volume_charge[1:-1, 1:-1] / gaas_permittivity)
-            # ADDED: left edge (source) fixed at 0 V
+          
+            # left edge (source) at 0 V
             potential[:, 0] = 0.0
-            # ADDED: right edge (drain) fixed at applied voltage; electrons are pulled towards higher potential
+          
+            # right edge (drain) fixed applied voltage; electrons pulled to higher potential, so left to right
             potential[:, -1] = applied_voltage
-            # ADDED: bottom wall: no field crosses it, so bottom row = row just inside
+          
+            # Added bottom wall, no field crosses it, so bottom row = row just inside
             potential[0, 1:-1] = potential[1, 1:-1]
-            # ADDED: top wall: same, top row = row just inside
+          
+            # Added top wall, no e-field crossing out, top row efield =  efleid row just inside
             potential[-1, 1:-1] = potential[-2, 1:-1]
 
         # ADDED: ---------- Step 3: electric field from the potential, E = -slope of potential ----------
@@ -195,6 +211,7 @@ for step in range(number_of_steps):
         grid_field_y = -potential_slope_y
 
     # ADDED: ---------- Step 4: push each electron with the field at its grid point ----------
+  
     # ADDED: field felt by each electron
     electron_field_x = grid_field_x[nearest_row, nearest_column]
     electron_field_y = grid_field_y[nearest_row, nearest_column]
@@ -253,6 +270,7 @@ for step in range(number_of_steps):
     
    
     scattered_angles = random_number.uniform(0.0, 2.0 * numpy.pi, number_of_electrons)
+  
     #speed unchanged only direction changes
     electron_x_v = numpy.where(scattered, electron_speed * numpy.cos(scattered_angles), electron_x_v)
     electron_y_v = numpy.where(scattered, electron_speed * numpy.sin(scattered_angles), electron_y_v)
