@@ -5,7 +5,7 @@ Simplified version, written in Python.
 - **General Description:** Simple 2DEG code written in python using PIC/EMC hybrid method.
 
 - **Material:** AlGaAs/GaAs heterostructure, with the 2DEG forming in the GaAs layer (the GaAs conduction band sits lower than the AlGaAs one, so electrons collect there)
-- **Temperature:** 77 K (assumption: helium gas coolant)
+- **Temperature:** 300k
 
 > **Note:** the physics is not completely accurate. Many simplifications were made to keep the simulation small enough for a local machine (see [Assumptions](#assumptions-and-simplifications)).
 
