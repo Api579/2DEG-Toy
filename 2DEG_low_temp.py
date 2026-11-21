@@ -1,4 +1,6 @@
 import numpy
+import mtplotlib
+matplotlib.use("Agg") #remove window disp, saves only final png, for speed-up
 import matplotlib.pyplot as pyplot
 
 
@@ -134,8 +136,16 @@ grid_field_y = numpy.zeros((grid_points_side, grid_points_side))
 
 # solve Poisson per these many steps, charge small change in 10 femto second
 steps_between_poisson_solves = 10
-# Jacobi passes per solve; each iteration closer to solved potential
-jacobi_iterations = 200
+
+
+
+
+
+
+
+
+
+
 
 #+++++++++++++++++++++++++++++++++++++++++++
 #Plotting initial
@@ -146,6 +156,7 @@ jacobi_iterations = 200
 pyplot.scatter(x_grid/1e-9, y_grid/1e-9, color="lightgrey", label="grid points")
 
 pyplot.scatter(electron_x_positions/1e-9, electron_y_positions/1e-9, color="blue", s=10, label="electrons")
+
 
 
 
@@ -183,14 +194,10 @@ for step in range(number_of_steps):
         # charge per volume, for Poisson's equation
         volume_charge = sheet_charge / two_deg_thickness
 
-        # solve Poisson's equation using Jacobi iteration
-        for iteration in range(jacobi_iterations):
-          
-            # inside each point = average of 4 neighbours + charge term
-            # eqn used: phi = 1/4 (left + right + up + down + spacing^2 x charge / permittivity)
-            # finite difference approximation of Poisson's equation
-            potential[1:-1, 1:-1] = 0.25 * (potential[1:-1, :-2] + potential[1:-1, 2:] + potential[:-2, 1:-1] + potential[2:, 1:-1] 
-                                            + grid_spacing * grid_spacing * volume_charge[1:-1, 1:-1] / gaas_permittivity)
+
+
+
+
           
             # left edge (source) at 0 V
             potential[:, 0] = 0.0
@@ -230,17 +237,17 @@ for step in range(number_of_steps):
     # mirror by the distance overshot, update positions
     electron_y_positions = numpy.where(over_top, 2.0 * top_edge - electron_y_positions, electron_y_positions)
     # flip volcity
-    electron_y_velocities = numpy.where(over_top, -electron_y_v, electron_y_v)
+    electron_y_v = numpy.where(over_top, -electron_y_v, electron_y_v)
 
     # same for going beow
     under_bottom = electron_y_positions < bottom_edge
     electron_y_positions = numpy.where(under_bottom, 2.0 * bottom_edge - electron_y_positions, electron_y_positions)
-    electron_y_velocities = numpy.where(under_bottom, -electron_y_v, electron_y_v)
+    electron_y_v = numpy.where(under_bottom, -electron_y_v, electron_y_v)
 
     # electrons going out the right end, has "left" the grid or 2DEG
     out_right = electron_x_positions > right_edge
     # Count the electron that has "left" the grid
-    electrons_out_right = out_right + numpy.sum(out_right)
+    electrons_out_right = electrons_out_right + numpy.sum(out_right)
     
     # electrons that scattered backwards past left edge
     out_left = electron_x_positions < left_edge
@@ -279,12 +286,12 @@ for step in range(number_of_steps):
 #Plotting final
 #+++++++++++++++++++++++++++++++++++++++++++
 
-# Every 50 steps, draw electron trail
-if step % 50 == 0:
-    pyplot.scatter(electron_x_positions /10e-9, electron_y_positions /10e-9, color="blue", s=2, alpha=0.3)
+# draw electron trail
+
+
 
 # final positions of the electrons in red
-pyplot.scatter(electron_x_positions /10e-9, electron_y_positions /10e-9, color="red", s=10, label="end")
+pyplot.scatter(electron_x_positions /1e-9, electron_y_positions /1e-9, color="red", s=10, label="end")
 
 
 # Make one unit in x equal one unit in y
@@ -296,3 +303,4 @@ pyplot.ylabel("y (nm)")
 
 # Save the plot as an image file, trimmed empty space
 pyplot.savefig("electron.png", bbox_inches="tight")
+
