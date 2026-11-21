@@ -18,7 +18,7 @@ import scipy.sparse.linalg
 electron_charge = 1.602176634e-19
 # mass of a free electron, (kilograms)
 free_electron_mass = 9.1093837e-31
-# reduced Planck constant, (joule per second)
+# reduced Planck constant, (joule*second)
 reduced_planck_constant = 1.054571817e-34
 
 
@@ -29,7 +29,7 @@ electron_mobility = 0.8
 # num of electrons per square metre of the 2DEG typically
 electron_density = 3e15
 # The voltage applied on top of left edge and right edge of AlGaAs/GaAs sandwhich
-# value small enough to not be lost as noise (if too small, it does not contribute much to thermal speed)
+# value large enough to not be lost as noise (if too small, it does not contribute much to thermal speed)
 applied_voltage = 10e-3
 
 
@@ -99,7 +99,7 @@ temperature = 300.0
 thermal_speed = numpy.sqrt(boltzmann_constant * temperature / effective_mass)
 
 
-#thermal velocity maxwell boltzman dist
+#flux-weighted Maxwellian (Rayleigh)
 random_values = random_number.uniform(0.0, 1.0, number_of_electrons)
 
 electron_x_v = thermal_speed * numpy.sqrt(-2.0 * numpy.log(1.0 - random_values))
@@ -149,8 +149,7 @@ steps_between_poisson_solves = 10
 
 # build Poisson matrix
 
-#keep dimensions to be within grid sizing
-# outermost of array no field crosses,so remove left, right,top, bottom edges
+# Field crosses left and right edges, but removed cus potential fixed (Dirichlet)
 poisson_array_unknown_sizing = (grid_points_side - 2) * (grid_points_side - 2)
 
 
@@ -186,7 +185,7 @@ for i in range(1, grid_points_side - 1):
             elif jj == grid_points_side - 1:
                 boundary_rhs[k] += applied_voltage
                 
-            # neighbour electrons of points is inside the grid so unknown now, need calculate
+            # neighbour grid points is inside the grid so unknown now, need calculate
             # so remember in the matrix it details to solve in loop
 
                     
@@ -197,7 +196,7 @@ for i in range(1, grid_points_side - 1):
             
             else:
 
-                # add the "referenced point" neighbour x in, same x cus same row, so only y need varies
+                # add the "referenced point" neighbour y in, same y cus same row, so only x need varies
                 poisson_rows.append(k)
 
                 # identity of the neighbour point
@@ -233,7 +232,7 @@ matrix_values = poisson_values
 
 #builds matrix with the recorded values
 poisson_matrix = scipy.sparse.csc_matrix((matrix_values, (matrix_rows, matrix_cols)),shape=(poisson_array_unknown_sizing, poisson_array_unknown_sizing))
-#solves for voltage at every point inside grid
+#factorise matrix to be later solved for voltage at every point inside grid in loop
 poisson_solver = scipy.sparse.linalg.splu(poisson_matrix)
 
 
@@ -321,7 +320,7 @@ for step in range(number_of_steps):
     electron_field_x = grid_field_x[nearest_row_y_point, nearest_column_x_point]
     electron_field_y = grid_field_y[nearest_row_y_point, nearest_column_x_point]
   
-    # a = -eE/m*, F=ma, F= -qV
+    # a = -eE/m*, F=ma, F= -qE
     electron_x_v = electron_x_v - electron_charge * electron_field_x / effective_mass * time_step
     electron_y_v = electron_y_v - electron_charge * electron_field_y / effective_mass * time_step
 
