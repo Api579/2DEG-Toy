@@ -90,8 +90,16 @@ time_between_collisions = electron_mobility * effective_mass / electron_charge
 # for each tinme step, P=1-e^(-"small change in t"/tau), poisson process
 scattering_probability = 1.0 - numpy.exp(-time_step / time_between_collisions)
 
+# Boltzmann constant 
+boltzmann_constant = 1.380649e-23
+# room temp
+temperature = 300.0
+
+# thermal_speed sqrt(kT/m), using boltzman distribution for more realism
+thermal_speed = numpy.sqrt(boltzmann_constant * temperature / effective_mass)
+
 # fermi velocity
-electron_speed = reduced_planck_constant * numpy.sqrt(2.0 * numpy.pi * electron_density) / effective_mass
+electron_speed = thermal_speed
 
 # Randomise direction for each electron, -num.py/2.0 is -90 degrees
 rand_angles = random_number.uniform(-numpy.pi / 2.0, numpy.pi / 2.0, number_of_electrons)
