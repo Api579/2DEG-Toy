@@ -103,17 +103,17 @@ python 2DEG_Toy.py
 
 ## Assumptions and simplifications
 
-- **Semiclassical:** electrons are classical point particles. No quantum effects (no subbands, quantised conductance or interference).
-- **Strictly 2D:** a single subband is assumed. A 10 nm thickness is used only to convert sheet charge into volume charge for Poisson's equation (see [Validity limits](#validity-limits) for why this is the weakest approximation in the model).
+- **Semiclassical:** No quantum solvers or effects.
+- **Strictly 2D:** single subband assumed, 10 nm thickness is only to convert sheet charge into volume charge for Poisson's equation, weak approximation.
 - **Parabolic band:** constant effective mass m\* = 0.067 m₀.
-- **Maxwell–Boltzmann statistics:** no Pauli exclusion or Fermi–Dirac statistics. At 300 K, k_BT ≈ 25.9 meV is about 2.4 × E_F ≈ 10.7 meV, so the electron gas is only moderately non-degenerate. The band-edge occupation is ≈ 0.34 with Fermi–Dirac statistics versus ≈ 0.41 with Maxwell–Boltzmann, so the approximation is reasonable but overestimates low-energy occupation by about 20 %.
-- **One scattering mechanism:** isotropic and thermalising (relaxation-time approximation). Each scatter draws a fresh Maxwellian velocity at the lattice temperature. Phonon, impurity and electron–electron scattering are not treated separately; electron–electron interaction enters only through the mean field (Poisson).
-- **Constant mobility:** the mobility is fixed at 0.8 m²/Vs (so τ ≈ 0.30 ps), with no dependence on field, energy or temperature, and no velocity saturation or intervalley (Γ→L) transfer. 0.8 m²/Vs equals the room-temperature drift mobility of weakly doped bulk GaAs [6]; a GaAs 2DEG approaches bulk values at room temperature [7]. Constant mobility is questionable at the applied field used here (see [Validity limits](#validity-limits)).
-- **Uniform positive background** (ionised donors) equal to the 2DEG density.
+- **Maxwell–Boltzmann statistics:** no Pauli exclusion or Fermi–Dirac statistics. 
+- **One scattering mechanism:** Phonon, impurity, electron–electron scattering, not treated separately.
+- **Constant mobility:** fixed at 0.8 m²/Vs (so τ ≈ 0.30 ps), does not vary with field, energy, temperature.
+- **Uniform positive background** ionised donors equals 2DEG density.
 - **Uniform permittivity:** GaAs, ε = 12.9 ε₀.
-- **No magnetic field, and the lattice is not heated.**
-- **Mirror walls:** no surface roughness.
-- **Simple contacts:** fixed electron count with 50/50 reinjection, independent of bias (see [Known issues](#known-issues)).
+- **No magnetic field and Lattice not heated**
+- **Mirror walls:** zero roughness of surface.
+- **Simple contacts:** fixed total electron count, injection equally on both contacts.
 
 ## Limitations
 
@@ -121,8 +121,8 @@ The scattering, injection, constants are supported by articles [1]–[3], but so
 
 - **Weak-field condition.** thermalising Drude Monte Carlo model assumes weak field, v_th ≫ eEτ/m\* [1]. But, for the simulation the usual drift velocity μE ≈ 8.9 × 10⁴ m/s is about 0.34 v_th, thus condition loosely met.
 electron mobility in GaAs decreases by more than 10 % below its low-field value at 800 V/cm [5], which is below 1.1 kV/cm applied in simulation. 
-- **Device size close to the mean free path.** Means that, electron can travel full device or grid length without experiencing scattering. In one article [1], reflecting walls perpendicular to the field make the conductivity depart from Drude once the box is only a few v_thτ across. Here L = 90 nm and v_thτ ≈ 79 nm (≈ 100 nm using the mean speed), so L ≈ v_thτ. In [1] the deviation comes from reflecting walls perpendicular to the field. In this code those are the absorbing contacts, so the effect appears as quasi-ballistic transport instead. Either way, the effective mobility should not be expected to equal the input 0.8 m²/Vs.
-- **Sheet-to-volume charge conversion.** A 2D layer is physically a sheet of charge, σδ(z). Its field spreads out of the plane into the surrounding material, which makes screening weaker than in 3D and transition regions much longer [4]. The rigorous treatment solves Poisson's equation in the plane perpendicular to the sheet, with the sheet entering through the boundary condition ∂φ/∂z = −σ/(2ε) [4]. This code instead solves an in-plane Poisson equation with ρ = σ/t. Applying the boundary condition of [4] to a sheet in a uniform dielectric gives the in-plane potential φ_q = σ_q/(2εq) for each Fourier component, whereas the slab model gives φ_q = σ_q/(εtq²). The ratio is 2/(tq). For t = 10 nm, this means about 36 % too low at a 20 nm wavelength and about 6 × too high at 180 nm (device scale). *(This comparison is derived here from the boundary condition in [4]; it is not stated in that paper.)* The Debye length used to choose the grid spacing (≈ 7.8 nm) also depends on this assumed thickness. 
+- **Device size close to the mean free path.** Means that, electron can travel full device or grid length without experiencing scattering. In one article [1], reflecting walls perpendicular to the field make the conductivity deviate from Drude model once the box, is only a few v_thτ across or too small. In the simulation, L = 90 nm and v_thτ ≈ 79 nm, ~100 nm using mean speed, so L ≈ v_thτ. In the article [1] the deviation comes from reflecting walls that is perpendicular to the electric field. Here those are absorbing contacts, so the effect appears as quasi-ballistic transport instead, however the case the effective mobility should not be expected to be equal to the input 0.8 m²/Vs.
+- **Sheet-to-volume charge conversion.** 2D charge layer should produce electric fields that spreads beyond the 2D plane, resulting in weaker screening (potential values) and longer transition regions than 3D [4]. The more accurate method is to solve Poisson’s equation perpendicular to the sheet, but here the code uses an in-plane equation with ρ = σ/t. For t = 10 nm, this approximation causes significant errors in regards to potential values [4]. 
 
 ## Derived values
 
